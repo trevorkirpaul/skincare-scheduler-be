@@ -9,7 +9,12 @@ export const ProductsController = (app: Express, pool: Pool) => {
   app.get(BASE, async (req, res) => {
     const { limit = 10, skip = 0, search } = req.query
     const safeLimit = limit > 25 ? 25 : limit
-    const pgText = `SELECT * FROM products LIMIT ${safeLimit} OFFSET ${skip}`
+    const searchQueryIfAvail =
+      typeof search === 'string' && search.length > 0
+        ? ` WHERE (brand,name,ingredients)::text LIKE '%${search}%' `
+        : ' '
+
+    const pgText = `SELECT * FROM products${searchQueryIfAvail}LIMIT ${safeLimit} OFFSET ${skip}`
     const pgProducts = await pool.query(pgText)
 
     res.status(200).send(pgProducts)

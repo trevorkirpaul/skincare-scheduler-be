@@ -34,7 +34,8 @@ const $03ea3093ee434e59$export$bc7d04bd56466d1 = (app, pool)=>{
     app.get($03ea3093ee434e59$var$BASE, async (req, res)=>{
         const { limit: limit = 10 , skip: skip = 0 , search: search  } = req.query;
         const safeLimit = limit > 25 ? 25 : limit;
-        const pgText = `SELECT * FROM products LIMIT ${safeLimit} OFFSET ${skip}`;
+        const searchQueryIfAvail = typeof search === "string" && search.length > 0 ? ` WHERE (brand,name,ingredients)::text LIKE '%${search}%' ` : " ";
+        const pgText = `SELECT * FROM products${searchQueryIfAvail}LIMIT ${safeLimit} OFFSET ${skip}`;
         const pgProducts = await pool.query(pgText);
         res.status(200).send(pgProducts);
     });
