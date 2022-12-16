@@ -1,7 +1,11 @@
+import type { Express } from 'express'
+import type { Pool } from 'pg'
+
 import { ProductsController } from '../controllers/Products'
 import { UserController } from '../controllers/User'
-const Routes = (app) => {
-  ProductsController(app)
+
+const Routes = (app: Express, pool: Pool) => {
+  ProductsController(app, pool)
   UserController(app)
 
   app.get('/', (req, res) => {
