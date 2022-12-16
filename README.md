@@ -2,6 +2,8 @@
 
 ## How to Run
 
+> ENV variable examples are found in the checked-in `.env` file
+
 ### Local Dev
 
 ```bash

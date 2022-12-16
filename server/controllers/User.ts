@@ -1,3 +1,5 @@
+import type { Pool } from 'pg'
+import type { Express } from 'express'
 import User from '../models/User'
 import Schedule from '../models/Schedule'
 import Day from '../models/Day'
@@ -7,7 +9,7 @@ const BASE = '/users'
 
 const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
-export const UserController = (app) => {
+export const UserController = (app: Express, pool: Pool) => {
   app.get(`${BASE}/:id`, async ({ params: { id } }, res) => {
     const user = await User.findById(id)
       .populate('schedules')
@@ -48,7 +50,20 @@ export const UserController = (app) => {
     // })
     res.status(200).send(users)
   })
+  /**
+   * --- CREATE NEW USER ---
+   * - create new user
+   * - create days and schedule then link them all
+   * - return user
+   */
   app.post(BASE, async (req, res) => {
+    // --- POSTGRES ---
+    // create day
+    // const text = ``;
+    // const values = []
+    // const { body } = req
+
+    // --- MONGO ----
     const newUser = await User.create(req.body)
     const createdDays = await Promise.all(
       days.map(

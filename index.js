@@ -157,7 +157,7 @@ const $106a7aca2240c444$var$days = [
     "FRI",
     "SAT"
 ];
-const $106a7aca2240c444$export$8bd653a33461d337 = (app)=>{
+const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
     app.get(`${$106a7aca2240c444$var$BASE}/:id`, async ({ params: { id: id  }  }, res)=>{
         const user = await (0, $298a501f88d7015c$export$2e2bcd8739ae039).findById(id).populate("schedules").populate({
             path: "schedules",
@@ -196,7 +196,12 @@ const $106a7aca2240c444$export$8bd653a33461d337 = (app)=>{
         // })
         res.status(200).send(users);
     });
-    app.post($106a7aca2240c444$var$BASE, async (req, res)=>{
+    /**
+   * --- CREATE NEW USER ---
+   * - create new user
+   * - create days and schedule then link them all
+   * - return user
+   */ app.post($106a7aca2240c444$var$BASE, async (req, res)=>{
         const newUser = await (0, $298a501f88d7015c$export$2e2bcd8739ae039).create(req.body);
         const createdDays = await Promise.all($106a7aca2240c444$var$days.map(async (day)=>await (0, $543e046aaa91e3cd$export$2e2bcd8739ae039).create({
                 day: day,
@@ -270,7 +275,7 @@ const $106a7aca2240c444$export$8bd653a33461d337 = (app)=>{
 
 const $0fed0a37f1519019$var$Routes = (app, pool)=>{
     (0, $03ea3093ee434e59$export$bc7d04bd56466d1)(app, pool);
-    (0, $106a7aca2240c444$export$8bd653a33461d337)(app);
+    (0, $106a7aca2240c444$export$8bd653a33461d337)(app, pool);
     app.get("/", (req, res)=>{
         res.send({
             message: "Works!"

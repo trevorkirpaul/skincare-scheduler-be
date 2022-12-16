@@ -6,7 +6,7 @@ import { UserController } from '../controllers/User'
 
 const Routes = (app: Express, pool: Pool) => {
   ProductsController(app, pool)
-  UserController(app)
+  UserController(app, pool)
 
   app.get('/', (req, res) => {
     res.send({ message: 'Works!' })
