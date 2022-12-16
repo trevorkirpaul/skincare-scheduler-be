@@ -1,0 +1,29 @@
+{
+  "name": "skincare-scheduler-be",
+  "version": "1.0.0",
+  "main": "index.js",
+  "source": "app.ts",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.19.1",
+    "@babel/preset-env": "^7.19.1",
+    "babel-jest": "^29.0.3",
+    "jest": "^29.0.3",
+    "nodemon": "^2.0.15",
+    "parcel": "^2.3.2",
+    "vite": "^2.9.15",
+    "vite-plugin-node": "^1.0.0"
+  },
+  "scripts": {
+    "watch": "parcel watch",
+    "build": "parcel build --no-optimize",
+    "dev": "nodemon ./dist/main.js",
+    "test": "jest --watch"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-paginate": "^1.0.2",
+    "mongoose": "^6.7.0"
+  }
+}
