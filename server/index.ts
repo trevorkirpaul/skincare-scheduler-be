@@ -3,6 +3,7 @@ import cors from 'cors'
 import { Pool, Client } from 'pg'
 import { connectToDB } from './utils/db'
 import Routes from './utils/routes'
+import createTables from './utils/createTables'
 
 const createServer = () => {
   const { VITE_PG_URL: connectionString } = process.env
@@ -16,6 +17,7 @@ const createServer = () => {
   // for connection information
   const databaseConfig = { connectionString }
   const pool = new Pool(databaseConfig)
+  createTables({ pool })
 
   // --- MONGO DB ---
   const app = express()

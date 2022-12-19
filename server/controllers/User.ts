@@ -10,44 +10,25 @@ const BASE = '/users'
 const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
 export const UserController = (app: Express, pool: Pool) => {
-  app.get(`${BASE}/:id`, async ({ params: { id } }, res) => {
-    const user = await User.findById(id)
-      .populate('schedules')
-      .populate({
-        path: 'schedules',
-        populate: {
-          path: 'days',
-          model: 'Day',
-          populate: {
-            path: 'products',
-            model: 'ScheduledProduct',
-            populate: {
-              path: 'product',
-              model: 'Product',
-            },
-          },
-        },
-      })
-    res.status(200).send(user)
+  app.get(`${BASE}/:email`, async ({ params: { email } }, res) => {
+    if (!email) {
+      return res.status(400)
+    }
+    // const text = `SELECT * FROM users WHERE email = '${email}' `
+    const text = `
+    SELECT
+    *
+    FROM
+      users
+      INNER JOIN schedules ON user.id = schedule.user_id
+    WHERE
+      email = 'tkirpaul@gmail.com'
+    `
+    const dbResponse = await pool.query(text)
+    return res.status(200).send(dbResponse)
   })
   app.get(BASE, async (req, res) => {
     const users = await User.find()
-    // .populate('schedules')
-    // .populate({
-    //   path: 'schedules',
-    //   populate: {
-    //     path: 'days',
-    //     model: 'Day',
-    //   },
-    // })
-    // .populate({
-    //   path: 'schedules.days.products',
-    //   model: 'days',
-    //   populate: {
-    //     path: 'products',
-    //     model: 'ScheduledProduct',
-    //   },
-    // })
     res.status(200).send(users)
   })
   /**
@@ -56,33 +37,12 @@ export const UserController = (app: Express, pool: Pool) => {
    * - create days and schedule then link them all
    * - return user
    */
-  app.post(BASE, async (req, res) => {
-    // --- POSTGRES ---
-    // create day
-    // const text = ``;
-    // const values = []
-    // const { body } = req
-
-    // --- MONGO ----
-    const newUser = await User.create(req.body)
-    const createdDays = await Promise.all(
-      days.map(
-        async (day) =>
-          await Day.create({
-            day,
-            products: [],
-          }),
-      ),
-    )
-    const newSchedule = await Schedule.create({
-      user: newUser._id,
-      days: createdDays.map((d) => d._id),
-    })
-
-    const updatedNewUser = await User.findByIdAndUpdate(newUser._id, {
-      $addToSet: { schedules: newSchedule._id },
-    })
-    res.status(200).send(updatedNewUser)
+  app.post(BASE, async ({ body }, res) => {
+    const { email } = body
+    const text = `INSERT INTO users(email) VALUES($1) RETURNING *`
+    const values = [email]
+    const dbResponse = await pool.query(text, values)
+    res.status(201).send(dbResponse)
   })
 
   app.post(`${BASE}/day/order`, async ({ body: { dayId, items } }, res) => {

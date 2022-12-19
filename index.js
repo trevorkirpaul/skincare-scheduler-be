@@ -89,23 +89,6 @@ var $298a501f88d7015c$export$2e2bcd8739ae039 = $298a501f88d7015c$var$User;
 
 
 
-const $ccb93aeb01945b55$var$Schema = new (0, ($parcel$interopDefault($l009i$mongoose))).Schema({
-    days: [
-        {
-            type: (0, ($parcel$interopDefault($l009i$mongoose))).Schema.Types.ObjectId,
-            ref: "Day"
-        }, 
-    ],
-    user: {
-        type: (0, ($parcel$interopDefault($l009i$mongoose))).Schema.Types.ObjectId,
-        ref: "User"
-    }
-});
-const $ccb93aeb01945b55$var$Schedule = (0, ($parcel$interopDefault($l009i$mongoose))).model("Schedule", $ccb93aeb01945b55$var$Schema);
-var $ccb93aeb01945b55$export$2e2bcd8739ae039 = $ccb93aeb01945b55$var$Schedule;
-
-
-
 const $543e046aaa91e3cd$var$Schema = new (0, ($parcel$interopDefault($l009i$mongoose))).Schema({
     day: {
         required: true,
@@ -158,42 +141,23 @@ const $106a7aca2240c444$var$days = [
     "SAT"
 ];
 const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
-    app.get(`${$106a7aca2240c444$var$BASE}/:id`, async ({ params: { id: id  }  }, res)=>{
-        const user = await (0, $298a501f88d7015c$export$2e2bcd8739ae039).findById(id).populate("schedules").populate({
-            path: "schedules",
-            populate: {
-                path: "days",
-                model: "Day",
-                populate: {
-                    path: "products",
-                    model: "ScheduledProduct",
-                    populate: {
-                        path: "product",
-                        model: "Product"
-                    }
-                }
-            }
-        });
-        res.status(200).send(user);
+    app.get(`${$106a7aca2240c444$var$BASE}/:email`, async ({ params: { email: email  }  }, res)=>{
+        if (!email) return res.status(400);
+        // const text = `SELECT * FROM users WHERE email = '${email}' `
+        const text = `
+    SELECT
+    *
+    FROM
+      users
+      INNER JOIN schedules ON user.id = schedule.user_id
+    WHERE
+      email = 'tkirpaul@gmail.com'
+    `;
+        const dbResponse = await pool.query(text);
+        return res.status(200).send(dbResponse);
     });
     app.get($106a7aca2240c444$var$BASE, async (req, res)=>{
         const users = await (0, $298a501f88d7015c$export$2e2bcd8739ae039).find();
-        // .populate('schedules')
-        // .populate({
-        //   path: 'schedules',
-        //   populate: {
-        //     path: 'days',
-        //     model: 'Day',
-        //   },
-        // })
-        // .populate({
-        //   path: 'schedules.days.products',
-        //   model: 'days',
-        //   populate: {
-        //     path: 'products',
-        //     model: 'ScheduledProduct',
-        //   },
-        // })
         res.status(200).send(users);
     });
     /**
@@ -201,22 +165,14 @@ const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
    * - create new user
    * - create days and schedule then link them all
    * - return user
-   */ app.post($106a7aca2240c444$var$BASE, async (req, res)=>{
-        const newUser = await (0, $298a501f88d7015c$export$2e2bcd8739ae039).create(req.body);
-        const createdDays = await Promise.all($106a7aca2240c444$var$days.map(async (day)=>await (0, $543e046aaa91e3cd$export$2e2bcd8739ae039).create({
-                day: day,
-                products: []
-            })));
-        const newSchedule = await (0, $ccb93aeb01945b55$export$2e2bcd8739ae039).create({
-            user: newUser._id,
-            days: createdDays.map((d)=>d._id)
-        });
-        const updatedNewUser = await (0, $298a501f88d7015c$export$2e2bcd8739ae039).findByIdAndUpdate(newUser._id, {
-            $addToSet: {
-                schedules: newSchedule._id
-            }
-        });
-        res.status(200).send(updatedNewUser);
+   */ app.post($106a7aca2240c444$var$BASE, async ({ body: body  }, res)=>{
+        const { email: email  } = body;
+        const text = `INSERT INTO users(email) VALUES($1) RETURNING *`;
+        const values = [
+            email
+        ];
+        const dbResponse = await pool.query(text, values);
+        res.status(201).send(dbResponse);
     });
     app.post(`${$106a7aca2240c444$var$BASE}/day/order`, async ({ body: { dayId: dayId , items: items  }  }, res)=>{
         const updatedDay = await (0, $543e046aaa91e3cd$export$2e2bcd8739ae039).findByIdAndUpdate(dayId, {
@@ -285,6 +241,101 @@ const $0fed0a37f1519019$var$Routes = (app, pool)=>{
 var $0fed0a37f1519019$export$2e2bcd8739ae039 = $0fed0a37f1519019$var$Routes;
 
 
+const $c91aec52c74f6064$var$defaultTablesToCreate = [
+    {
+        name: "products",
+        properties: [
+            {
+                name: "name",
+                type: "TEXT",
+                notNull: true
+            },
+            {
+                name: "brand",
+                type: "TEXT",
+                notNull: true
+            },
+            {
+                name: "ingredients",
+                type: "TEXT",
+                isArray: true
+            },
+            {
+                name: "type",
+                type: "TEXT",
+                notNull: true
+            }, 
+        ]
+    },
+    {
+        name: "users",
+        properties: [
+            {
+                name: "email",
+                type: "TEXT",
+                notNull: true
+            }, 
+        ]
+    },
+    {
+        name: "schedules",
+        properties: [
+            {
+                name: "user_id",
+                type: ""
+            }, 
+        ]
+    }, 
+];
+const $c91aec52c74f6064$export$573aa0c7b6bc561 = (properties)=>{
+    return properties.reduce((prev, { name: name , type: type , notNull: notNull , isArray: isArray  })=>{
+        const computedType = isArray ? `${type}[]` : `${type}`;
+        return `${prev}, ${name} ${computedType}${notNull ? " NOT NULL" : ""}`;
+    }, "id SERIAL PRIMARY KEY");
+};
+/**
+ * bootstraps tables
+ * if they don't exist
+ */ const $c91aec52c74f6064$var$createTables = async ({ pool: pool  })=>{
+    await pool.query(`
+      BEGIN;
+
+      CREATE TABLE IF NOT EXISTS products(
+        id serial PRIMARY KEY,
+        name TEXT NOT NULL,
+        brand TEXT NOT NULL,
+        ingredients TEXT[],
+        type TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS users(email TEXT NOT NULL, id SERIAL PRIMARY KEY);
+
+      CREATE TABLE IF NOT EXISTS schedules(
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS days(
+        id SERIAL PRIMARY KEY,
+        schedule_id INTEGER REFERENCES schedules(id),
+        day TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS day_products(
+        id SERIAL PRIMARY KEY,
+        day_id INTEGER REFERENCES schedules(id),
+        product_id INTEGER REFERENCES products(id),
+        schedule_id INTEGER REFERENCES schedules(id),
+        user_id INTEGER REFERENCES users(id)
+      );
+
+      COMMIT;
+    `);
+};
+var $c91aec52c74f6064$export$2e2bcd8739ae039 = $c91aec52c74f6064$var$createTables;
+
+
 const $7cae461d24fb566d$export$ea4422ead210593b = ()=>{
     const connectionString = "postgres://fputaxut:PO5_wyNdn-iJ4d2cIMVg-KjzphP5P0eH@ruby.db.elephantsql.com/fputaxut";
     if (!connectionString) throw new Error("PG_URL is undefined, check your ENV vars");
@@ -295,6 +346,9 @@ const $7cae461d24fb566d$export$ea4422ead210593b = ()=>{
         connectionString: connectionString
     };
     const pool = new (0, $l009i$pg.Pool)(databaseConfig);
+    (0, $c91aec52c74f6064$export$2e2bcd8739ae039)({
+        pool: pool
+    });
     // --- MONGO DB ---
     const app = (0, ($parcel$interopDefault($l009i$express)))();
     const port = 3001;
