@@ -31,6 +31,33 @@ export const UserController = (app: Express, pool: Pool) => {
     const users = await User.find()
     res.status(200).send(users)
   })
+  app.get(`${BASE}/schedule/:email`, async ({ params: { email } }, res) => {
+    if (!email) {
+      // @TODO: ensure correct status code
+      return res.status(400)
+    }
+
+    const text = `
+      SELECT
+        c.brand AS "brand",
+        c.name AS "name",
+        day,
+        is_am
+      FROM users a
+      JOIN (  
+        SELECT product_id, user_id, day, is_am
+        FROM scheduled_products
+      ) b on b.user_id = a.id
+      JOIN (
+        SELECT name, id, brand
+        FROM products
+      ) c on c.id = b.product_id
+      WHERE email = '${email}';
+    `
+    const dbResponse = await pool.query(text)
+
+    res.status(200).send(dbResponse)
+  })
   /**
    * --- CREATE NEW USER ---
    * - create new user
@@ -39,9 +66,11 @@ export const UserController = (app: Express, pool: Pool) => {
    */
   app.post(BASE, async ({ body }, res) => {
     const { email } = body
+    //  create new user
     const text = `INSERT INTO users(email) VALUES($1) RETURNING *`
     const values = [email]
     const dbResponse = await pool.query(text, values)
+
     res.status(201).send(dbResponse)
   })
 

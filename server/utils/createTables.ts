@@ -17,54 +17,6 @@ interface TableToCreate {
   properties: TableProperties[]
 }
 
-const defaultTablesToCreate: TableToCreate[] = [
-  {
-    name: 'products',
-    properties: [
-      {
-        name: 'name',
-        type: 'TEXT',
-        notNull: true,
-      },
-
-      {
-        name: 'brand',
-        type: 'TEXT',
-        notNull: true,
-      },
-      {
-        name: 'ingredients',
-        type: 'TEXT',
-        isArray: true,
-      },
-      {
-        name: 'type',
-        type: 'TEXT',
-        notNull: true,
-      },
-    ],
-  },
-  {
-    name: 'users',
-    properties: [
-      {
-        name: 'email',
-        type: 'TEXT',
-        notNull: true,
-      },
-    ],
-  },
-  {
-    name: 'schedules',
-    properties: [
-      {
-        name: 'user_id',
-        type: '',
-      },
-    ],
-  },
-]
-
 export const getPropertiesForText = (properties: TableProperties[]) => {
   return properties.reduce((prev, { name, type, notNull, isArray }) => {
     const computedType = isArray ? `${type}[]` : `${type}`
@@ -89,26 +41,17 @@ const createTables = async ({ pool }: IArgs): Promise<void> => {
         type TEXT NOT NULL
       );
 
-      CREATE TABLE IF NOT EXISTS users(email TEXT NOT NULL, id SERIAL PRIMARY KEY);
-
-      CREATE TABLE IF NOT EXISTS schedules(
+      CREATE TABLE IF NOT EXISTS users(
         id SERIAL PRIMARY KEY,
-        user_id INTEGER,
-        CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id)
+        email TEXT NOT NULL
       );
 
-      CREATE TABLE IF NOT EXISTS days(
+      CREATE TABLE IF NOT EXISTS scheduled_products(
         id SERIAL PRIMARY KEY,
-        schedule_id INTEGER REFERENCES schedules(id),
-        day TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS day_products(
-        id SERIAL PRIMARY KEY,
-        day_id INTEGER REFERENCES schedules(id),
         product_id INTEGER REFERENCES products(id),
-        schedule_id INTEGER REFERENCES schedules(id),
-        user_id INTEGER REFERENCES users(id)
+        user_id INTEGER REFERENCES users(id),
+        day TEXT NOT NULL,
+        is_am BOOLEAN NOT NULL
       );
 
       COMMIT;

@@ -4,8 +4,9 @@ import { Pool, Client } from 'pg'
 import { connectToDB } from './utils/db'
 import Routes from './utils/routes'
 import createTables from './utils/createTables'
+import seedUsersAndScheduledProducts from './utils/seedUsersAndScheduledProducts'
 
-const createServer = () => {
+const createServer = async () => {
   const { VITE_PG_URL: connectionString } = process.env
 
   if (!connectionString) {
@@ -17,7 +18,8 @@ const createServer = () => {
   // for connection information
   const databaseConfig = { connectionString }
   const pool = new Pool(databaseConfig)
-  createTables({ pool })
+  await createTables({ pool })
+  // await seedUsersAndScheduledProducts({ pool, shouldSeed: true })
 
   // --- MONGO DB ---
   const app = express()

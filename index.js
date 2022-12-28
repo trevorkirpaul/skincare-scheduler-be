@@ -160,6 +160,29 @@ const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
         const users = await (0, $298a501f88d7015c$export$2e2bcd8739ae039).find();
         res.status(200).send(users);
     });
+    app.get(`${$106a7aca2240c444$var$BASE}/schedule/:email`, async ({ params: { email: email  }  }, res)=>{
+        if (!email) // @TODO: ensure correct status code
+        return res.status(400);
+        const text = `
+      SELECT
+        c.brand AS "brand",
+        c.name AS "name",
+        day,
+        is_am
+      FROM users a
+      JOIN (  
+        SELECT product_id, user_id, day, is_am
+        FROM scheduled_products
+      ) b on b.user_id = a.id
+      JOIN (
+        SELECT name, id, brand
+        FROM products
+      ) c on c.id = b.product_id
+      WHERE email = '${email}';
+    `;
+        const dbResponse = await pool.query(text);
+        res.status(200).send(dbResponse);
+    });
     /**
    * --- CREATE NEW USER ---
    * - create new user
@@ -167,6 +190,7 @@ const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
    * - return user
    */ app.post($106a7aca2240c444$var$BASE, async ({ body: body  }, res)=>{
         const { email: email  } = body;
+        //  create new user
         const text = `INSERT INTO users(email) VALUES($1) RETURNING *`;
         const values = [
             email
@@ -241,52 +265,6 @@ const $0fed0a37f1519019$var$Routes = (app, pool)=>{
 var $0fed0a37f1519019$export$2e2bcd8739ae039 = $0fed0a37f1519019$var$Routes;
 
 
-const $c91aec52c74f6064$var$defaultTablesToCreate = [
-    {
-        name: "products",
-        properties: [
-            {
-                name: "name",
-                type: "TEXT",
-                notNull: true
-            },
-            {
-                name: "brand",
-                type: "TEXT",
-                notNull: true
-            },
-            {
-                name: "ingredients",
-                type: "TEXT",
-                isArray: true
-            },
-            {
-                name: "type",
-                type: "TEXT",
-                notNull: true
-            }, 
-        ]
-    },
-    {
-        name: "users",
-        properties: [
-            {
-                name: "email",
-                type: "TEXT",
-                notNull: true
-            }, 
-        ]
-    },
-    {
-        name: "schedules",
-        properties: [
-            {
-                name: "user_id",
-                type: ""
-            }, 
-        ]
-    }, 
-];
 const $c91aec52c74f6064$export$573aa0c7b6bc561 = (properties)=>{
     return properties.reduce((prev, { name: name , type: type , notNull: notNull , isArray: isArray  })=>{
         const computedType = isArray ? `${type}[]` : `${type}`;
@@ -308,26 +286,17 @@ const $c91aec52c74f6064$export$573aa0c7b6bc561 = (properties)=>{
         type TEXT NOT NULL
       );
 
-      CREATE TABLE IF NOT EXISTS users(email TEXT NOT NULL, id SERIAL PRIMARY KEY);
-
-      CREATE TABLE IF NOT EXISTS schedules(
+      CREATE TABLE IF NOT EXISTS users(
         id SERIAL PRIMARY KEY,
-        user_id INTEGER,
-        CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id)
+        email TEXT NOT NULL
       );
 
-      CREATE TABLE IF NOT EXISTS days(
+      CREATE TABLE IF NOT EXISTS scheduled_products(
         id SERIAL PRIMARY KEY,
-        schedule_id INTEGER REFERENCES schedules(id),
-        day TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS day_products(
-        id SERIAL PRIMARY KEY,
-        day_id INTEGER REFERENCES schedules(id),
         product_id INTEGER REFERENCES products(id),
-        schedule_id INTEGER REFERENCES schedules(id),
-        user_id INTEGER REFERENCES users(id)
+        user_id INTEGER REFERENCES users(id),
+        day TEXT NOT NULL,
+        is_am BOOLEAN NOT NULL
       );
 
       COMMIT;
@@ -336,7 +305,7 @@ const $c91aec52c74f6064$export$573aa0c7b6bc561 = (properties)=>{
 var $c91aec52c74f6064$export$2e2bcd8739ae039 = $c91aec52c74f6064$var$createTables;
 
 
-const $7cae461d24fb566d$export$ea4422ead210593b = ()=>{
+const $7cae461d24fb566d$export$ea4422ead210593b = async ()=>{
     const connectionString = "postgres://fputaxut:PO5_wyNdn-iJ4d2cIMVg-KjzphP5P0eH@ruby.db.elephantsql.com/fputaxut";
     if (!connectionString) throw new Error("PG_URL is undefined, check your ENV vars");
     // --- POSTGRES ---
@@ -346,9 +315,10 @@ const $7cae461d24fb566d$export$ea4422ead210593b = ()=>{
         connectionString: connectionString
     };
     const pool = new (0, $l009i$pg.Pool)(databaseConfig);
-    (0, $c91aec52c74f6064$export$2e2bcd8739ae039)({
+    await (0, $c91aec52c74f6064$export$2e2bcd8739ae039)({
         pool: pool
     });
+    // await seedUsersAndScheduledProducts({ pool, shouldSeed: true })
     // --- MONGO DB ---
     const app = (0, ($parcel$interopDefault($l009i$express)))();
     const port = 3001;
