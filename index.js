@@ -30,14 +30,25 @@ $26742774b7a01c30$exports = JSON.parse('[{"id":1,"brand":"amorepacific","name":"
 
 
 const $03ea3093ee434e59$var$BASE = "/products";
+const $03ea3093ee434e59$var$getSearchQueryIfAvail = (search)=>{
+    if (typeof search === "string" && search.length > 0) return ` WHERE (brand,name,ingredients)::text LIKE '%${search}%' `;
+    return "";
+};
 const $03ea3093ee434e59$export$bc7d04bd56466d1 = (app, pool)=>{
     app.get($03ea3093ee434e59$var$BASE, async (req, res)=>{
         const { limit: limit = 10 , skip: skip = 0 , search: search  } = req.query;
         const safeLimit = limit > 25 ? 25 : limit;
-        const searchQueryIfAvail = typeof search === "string" && search.length > 0 ? ` WHERE (brand,name,ingredients)::text LIKE '%${search}%' ` : " ";
+        const searchQueryIfAvail = typeof search === "string" && search.length > 0 ? ` WHERE (brand,name,ingredients)::text LIKE '%${search}%'` : " ";
         const pgText = `SELECT * FROM products${searchQueryIfAvail}LIMIT ${safeLimit} OFFSET ${skip}`;
         const pgProducts = await pool.query(pgText);
         res.status(200).send(pgProducts);
+    });
+    app.get(`${$03ea3093ee434e59$var$BASE}/count`, async (req, res)=>{
+        const { search: search  } = req.query;
+        const searchQueryIfAvail = $03ea3093ee434e59$var$getSearchQueryIfAvail(search);
+        const pgText = `SELECT count(*) AS exact_count FROM products${searchQueryIfAvail}`;
+        const pgCount = await pool.query(pgText);
+        res.status(200).send(pgCount);
     });
     app.post(`${$03ea3093ee434e59$var$BASE}`, async ({ body: body  }, res)=>{
         try {
@@ -145,33 +156,11 @@ const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
         if (!email) return res.status(400);
         // const text = `SELECT * FROM users WHERE email = '${email}' `
         const text = `
-    SELECT
-    *
-    FROM
-      users
-      INNER JOIN schedules ON user.id = schedule.user_id
-    WHERE
-      email = 'tkirpaul@gmail.com'
-    `;
-        const dbResponse = await pool.query(text);
-        return res.status(200).send(dbResponse);
-    });
-    app.get($106a7aca2240c444$var$BASE, async (req, res)=>{
-        const users = await (0, $298a501f88d7015c$export$2e2bcd8739ae039).find();
-        res.status(200).send(users);
-    });
-    app.get(`${$106a7aca2240c444$var$BASE}/schedule/:email`, async ({ params: { email: email  }  }, res)=>{
-        if (!email) // @TODO: ensure correct status code
-        return res.status(400);
-        const text = `
       SELECT
-        c.brand AS "brand",
-        c.name AS "name",
-        day,
-        is_am
+        *
       FROM users a
-      JOIN (  
-        SELECT product_id, user_id, day, is_am
+      JOIN (
+        SELECT product_id, user_id
         FROM scheduled_products
       ) b on b.user_id = a.id
       JOIN (
@@ -181,7 +170,36 @@ const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
       WHERE email = '${email}';
     `;
         const dbResponse = await pool.query(text);
-        res.status(200).send(dbResponse);
+        return res.status(200).send(dbResponse);
+    });
+    app.get($106a7aca2240c444$var$BASE, async (req, res)=>{
+        const users = await (0, $298a501f88d7015c$export$2e2bcd8739ae039).find();
+        res.status(200).send(users);
+    });
+    app.get(`${$106a7aca2240c444$var$BASE}/schedule/:email`, async ({ params: { email: email  }  }, res)=>{
+        console.log("email", email);
+        if (!email) // @TODO: ensure correct status code
+        return res.status(400);
+        const text = `
+      SELECT
+        c.brand AS "brand",
+        c.name AS "name",
+        day,
+        is_am,
+        c.id AS "id"
+      FROM users a
+      JOIN (  
+        SELECT product_id, user_id, day, is_am, id
+        FROM scheduled_products
+      ) b on b.user_id = a.id
+      JOIN (
+        SELECT name, id, brand
+        FROM products
+      ) c on c.id = b.product_id
+      WHERE email = '${email}';
+    `;
+        const { rows: rows  } = await pool.query(text);
+        res.status(200).send(rows);
     });
     /**
    * --- CREATE NEW USER ---
@@ -253,9 +271,38 @@ const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
 };
 
 
+const $67bca349c99e993d$var$BASE = "/scheduled-products";
+const $67bca349c99e993d$export$5099ebe82927bbad = (app, pool)=>{
+    app.post($67bca349c99e993d$var$BASE, async ({ body: body  }, res)=>{
+        const { productId: productId , userId: userId , day: day , isAm: isAm  } = body;
+        const text = `
+      INSERT INTO scheduled_products(product_id, user_id, day, is_am)
+      VALUES(
+        '${productId}',
+        '${userId}',
+        '${day}',
+        '${isAm}'
+      )
+      RETURNING *;
+    `;
+        const newScheduledProductResponse = await pool.query(text);
+        return res.status(201).send(newScheduledProductResponse);
+    });
+    app.delete(`${$67bca349c99e993d$var$BASE}/:id`, async ({ params: params  }, res)=>{
+        const text = `
+      DELETE FROM scheduled_products
+      WHERE id = ${params.id};
+    `;
+        const deletedResponse = await pool.query(text);
+        return res.status(204).send(deletedResponse);
+    });
+};
+
+
 const $0fed0a37f1519019$var$Routes = (app, pool)=>{
     (0, $03ea3093ee434e59$export$bc7d04bd56466d1)(app, pool);
     (0, $106a7aca2240c444$export$8bd653a33461d337)(app, pool);
+    (0, $67bca349c99e993d$export$5099ebe82927bbad)(app, pool);
     app.get("/", (req, res)=>{
         res.send({
             message: "Works!"

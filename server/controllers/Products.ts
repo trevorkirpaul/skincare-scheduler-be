@@ -5,19 +5,34 @@ import productsJSON from '../data/products.json'
 
 const BASE = '/products'
 
+const getSearchQueryIfAvail = (search) => {
+  if (typeof search === 'string' && search.length > 0) {
+    return ` WHERE (brand,name,ingredients)::text LIKE '%${search}%' `
+  }
+  return ''
+}
+
 export const ProductsController = (app: Express, pool: Pool) => {
   app.get(BASE, async (req, res) => {
     const { limit = 10, skip = 0, search } = req.query
     const safeLimit = limit > 25 ? 25 : limit
     const searchQueryIfAvail =
       typeof search === 'string' && search.length > 0
-        ? ` WHERE (brand,name,ingredients)::text LIKE '%${search}%' `
+        ? ` WHERE (brand,name,ingredients)::text LIKE '%${search}%'`
         : ' '
 
     const pgText = `SELECT * FROM products${searchQueryIfAvail}LIMIT ${safeLimit} OFFSET ${skip}`
     const pgProducts = await pool.query(pgText)
 
     res.status(200).send(pgProducts)
+  })
+
+  app.get(`${BASE}/count`, async (req, res) => {
+    const { search } = req.query
+    const searchQueryIfAvail = getSearchQueryIfAvail(search)
+    const pgText = `SELECT count(*) AS exact_count FROM products${searchQueryIfAvail}`
+    const pgCount = await pool.query(pgText)
+    res.status(200).send(pgCount)
   })
 
   app.post(`${BASE}`, async ({ body }, res) => {

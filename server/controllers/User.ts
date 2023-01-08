@@ -16,13 +16,18 @@ export const UserController = (app: Express, pool: Pool) => {
     }
     // const text = `SELECT * FROM users WHERE email = '${email}' `
     const text = `
-    SELECT
-    *
-    FROM
-      users
-      INNER JOIN schedules ON user.id = schedule.user_id
-    WHERE
-      email = 'tkirpaul@gmail.com'
+      SELECT
+        *
+      FROM users a
+      JOIN (
+        SELECT product_id, user_id
+        FROM scheduled_products
+      ) b on b.user_id = a.id
+      JOIN (
+        SELECT name, id, brand
+        FROM products
+      ) c on c.id = b.product_id
+      WHERE email = '${email}';
     `
     const dbResponse = await pool.query(text)
     return res.status(200).send(dbResponse)
@@ -32,6 +37,7 @@ export const UserController = (app: Express, pool: Pool) => {
     res.status(200).send(users)
   })
   app.get(`${BASE}/schedule/:email`, async ({ params: { email } }, res) => {
+    console.log('email', email)
     if (!email) {
       // @TODO: ensure correct status code
       return res.status(400)
@@ -42,10 +48,11 @@ export const UserController = (app: Express, pool: Pool) => {
         c.brand AS "brand",
         c.name AS "name",
         day,
-        is_am
+        is_am,
+        c.id AS "id"
       FROM users a
       JOIN (  
-        SELECT product_id, user_id, day, is_am
+        SELECT product_id, user_id, day, is_am, id
         FROM scheduled_products
       ) b on b.user_id = a.id
       JOIN (
@@ -54,9 +61,9 @@ export const UserController = (app: Express, pool: Pool) => {
       ) c on c.id = b.product_id
       WHERE email = '${email}';
     `
-    const dbResponse = await pool.query(text)
+    const { rows } = await pool.query(text)
 
-    res.status(200).send(dbResponse)
+    res.status(200).send(rows)
   })
   /**
    * --- CREATE NEW USER ---
