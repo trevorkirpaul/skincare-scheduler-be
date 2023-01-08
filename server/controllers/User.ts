@@ -11,30 +11,10 @@ const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
 
 export const UserController = (app: Express, pool: Pool) => {
   app.get(`${BASE}/:email`, async ({ params: { email } }, res) => {
-    if (!email) {
-      return res.status(400)
-    }
-    // const text = `SELECT * FROM users WHERE email = '${email}' `
-    const text = `
-      SELECT
-        *
-      FROM users a
-      JOIN (
-        SELECT product_id, user_id
-        FROM scheduled_products
-      ) b on b.user_id = a.id
-      JOIN (
-        SELECT name, id, brand
-        FROM products
-      ) c on c.id = b.product_id
-      WHERE email = '${email}';
-    `
-    const dbResponse = await pool.query(text)
-    return res.status(200).send(dbResponse)
-  })
-  app.get(BASE, async (req, res) => {
-    const users = await User.find()
-    res.status(200).send(users)
+    const text = `SELECT * FROM users WHERE email = '${email}'`
+    const { rows } = await pool.query(text)
+
+    res.status(200).send(rows[0])
   })
   app.get(`${BASE}/schedule/:email`, async ({ params: { email } }, res) => {
     console.log('email', email)

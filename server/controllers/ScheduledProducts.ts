@@ -8,15 +8,8 @@ export const ScheduledProductsController = (app: Express, pool: Pool) => {
     const { productId, userId, day, isAm } = body
     const text = `
       INSERT INTO scheduled_products(product_id, user_id, day, is_am)
-      VALUES(
-        '${productId}',
-        '${userId}',
-        '${day}',
-        '${isAm}'
-      )
-      RETURNING *;
+      VALUES(${productId}, ${userId}, '${day}', ${isAm});
     `
-
     const newScheduledProductResponse = await pool.query(text)
     return res.status(201).send(newScheduledProductResponse)
   })

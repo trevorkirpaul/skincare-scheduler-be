@@ -83,23 +83,6 @@ const $03ea3093ee434e59$export$bc7d04bd56466d1 = (app, pool)=>{
 
 
 
-const $298a501f88d7015c$var$Schema = new (0, ($parcel$interopDefault($l009i$mongoose))).Schema({
-    email: {
-        type: String,
-        required: true
-    },
-    schedules: [
-        {
-            type: (0, ($parcel$interopDefault($l009i$mongoose))).Schema.Types.ObjectId,
-            ref: "Schedule"
-        }, 
-    ]
-});
-const $298a501f88d7015c$var$User = (0, ($parcel$interopDefault($l009i$mongoose))).model("User", $298a501f88d7015c$var$Schema);
-var $298a501f88d7015c$export$2e2bcd8739ae039 = $298a501f88d7015c$var$User;
-
-
-
 const $543e046aaa91e3cd$var$Schema = new (0, ($parcel$interopDefault($l009i$mongoose))).Schema({
     day: {
         required: true,
@@ -153,28 +136,9 @@ const $106a7aca2240c444$var$days = [
 ];
 const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
     app.get(`${$106a7aca2240c444$var$BASE}/:email`, async ({ params: { email: email  }  }, res)=>{
-        if (!email) return res.status(400);
-        // const text = `SELECT * FROM users WHERE email = '${email}' `
-        const text = `
-      SELECT
-        *
-      FROM users a
-      JOIN (
-        SELECT product_id, user_id
-        FROM scheduled_products
-      ) b on b.user_id = a.id
-      JOIN (
-        SELECT name, id, brand
-        FROM products
-      ) c on c.id = b.product_id
-      WHERE email = '${email}';
-    `;
-        const dbResponse = await pool.query(text);
-        return res.status(200).send(dbResponse);
-    });
-    app.get($106a7aca2240c444$var$BASE, async (req, res)=>{
-        const users = await (0, $298a501f88d7015c$export$2e2bcd8739ae039).find();
-        res.status(200).send(users);
+        const text = `SELECT * FROM users WHERE email = '${email}'`;
+        const { rows: rows  } = await pool.query(text);
+        res.status(200).send(rows[0]);
     });
     app.get(`${$106a7aca2240c444$var$BASE}/schedule/:email`, async ({ params: { email: email  }  }, res)=>{
         console.log("email", email);
@@ -277,13 +241,7 @@ const $67bca349c99e993d$export$5099ebe82927bbad = (app, pool)=>{
         const { productId: productId , userId: userId , day: day , isAm: isAm  } = body;
         const text = `
       INSERT INTO scheduled_products(product_id, user_id, day, is_am)
-      VALUES(
-        '${productId}',
-        '${userId}',
-        '${day}',
-        '${isAm}'
-      )
-      RETURNING *;
+      VALUES(${productId}, ${userId}, '${day}', ${isAm});
     `;
         const newScheduledProductResponse = await pool.query(text);
         return res.status(201).send(newScheduledProductResponse);
