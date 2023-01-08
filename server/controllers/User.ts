@@ -29,7 +29,8 @@ export const UserController = (app: Express, pool: Pool) => {
         c.name AS "name",
         day,
         is_am,
-        c.id AS "id"
+        c.id AS "product_id",
+        b.id AS "id"
       FROM users a
       JOIN (  
         SELECT product_id, user_id, day, is_am, id

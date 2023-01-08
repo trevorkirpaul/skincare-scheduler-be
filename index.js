@@ -150,7 +150,8 @@ const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
         c.name AS "name",
         day,
         is_am,
-        c.id AS "id"
+        c.id AS "product_id",
+        b.id AS "id"
       FROM users a
       JOIN (  
         SELECT product_id, user_id, day, is_am, id
