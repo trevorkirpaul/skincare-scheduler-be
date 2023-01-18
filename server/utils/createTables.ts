@@ -54,6 +54,13 @@ const createTables = async ({ pool }: IArgs): Promise<void> => {
         is_am BOOLEAN NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS scheduled_product_orders(
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        day TEXT NOT NULL,
+        scheduled_product_ids INTEGER[]
+      );
+
       COMMIT;
     `)
 }

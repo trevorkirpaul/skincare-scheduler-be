@@ -17,7 +17,6 @@ export const UserController = (app: Express, pool: Pool) => {
     res.status(200).send(rows[0])
   })
   app.get(`${BASE}/schedule/:email`, async ({ params: { email } }, res) => {
-    console.log('email', email)
     if (!email) {
       // @TODO: ensure correct status code
       return res.status(400)
@@ -42,9 +41,13 @@ export const UserController = (app: Express, pool: Pool) => {
       ) c on c.id = b.product_id
       WHERE email = '${email}';
     `
-    const { rows } = await pool.query(text)
 
-    res.status(200).send(rows)
+    try {
+      const { rows } = await pool.query(text)
+      res.status(200).send(rows)
+    } catch (e) {
+      console.log('ERROR:', e)
+    }
   })
   /**
    * --- CREATE NEW USER ---
@@ -62,27 +65,40 @@ export const UserController = (app: Express, pool: Pool) => {
     res.status(201).send(dbResponse)
   })
 
-  app.post(`${BASE}/day/order`, async ({ body: { dayId, items } }, res) => {
-    const updatedDay = await Day.findByIdAndUpdate(
-      dayId,
-      {
-        $pullAll: { products: items },
-      },
-      { new: true },
+  app.get(`${BASE}/all_orders/:userId`, async ({ params: { userId } }, res) => {
+    const updatedScheduledProductOrderText = `
+          SELECT * FROM scheduled_product_orders
+          WHERE scheduled_product_orders.user_id = ${userId};
+        `
+    const updatedScheduledProductOrderResponse = await pool.query(
+      updatedScheduledProductOrderText,
     )
 
-    const updatedDayWithUpdatedOrder = await Day.findByIdAndUpdate(
-      dayId,
-      {
-        $addToSet: { products: items },
-      },
-      { new: true },
-    )
-
-    return res.status(200).send({
-      updatedDay,
-    })
+    return res.status(200).send(updatedScheduledProductOrderResponse.rows)
   })
+
+  app.post(
+    `${BASE}/day/order`,
+    async ({ body: { day, items, userId } }, res) => {
+      const updatedScheduledProductOrderText = `
+          UPDATE scheduled_product_orders
+          SET scheduled_product_ids = ($1)
+          WHERE scheduled_product_orders.day = '${day}' AND scheduled_product_orders.user_id = ${userId}
+          RETURNING *;
+        `
+      const updatedScheduledProductOrderValues = [items]
+      const updatedScheduledProductOrderResponse = await pool.query(
+        updatedScheduledProductOrderText,
+        updatedScheduledProductOrderValues,
+      )
+
+      return res
+        .status(200)
+        .send(
+          updatedScheduledProductOrderResponse.rows[0].scheduled_product_ids,
+        )
+    },
+  )
 
   app.post(`${BASE}/schedule`, async ({ body: { dayId, productId } }, res) => {
     const newScheduledProduct = await ScheduledProduct.create({
