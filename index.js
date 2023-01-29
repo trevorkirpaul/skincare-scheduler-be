@@ -227,6 +227,26 @@ const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
 
 const $67bca349c99e993d$var$BASE = "/scheduled-products";
 const $67bca349c99e993d$export$5099ebe82927bbad = (app, pool)=>{
+    app.get(`${$67bca349c99e993d$var$BASE}/ingredients/:userid`, async ({ params: { userid: userid  }  }, res)=>{
+        const text = `
+    SELECT 
+      name, 
+      brand, 
+      ingredients 
+    FROM 
+      scheduled_products a 
+      JOIN (
+        SELECT 
+          * 
+        FROM 
+          products
+      ) b on b.id = a.product_id 
+    WHERE 
+      a.user_id = 1
+    `;
+        const fetchedIngredients = await pool.query(text);
+        return res.status(200).send(fetchedIngredients.rows);
+    });
     app.post($67bca349c99e993d$var$BASE, async ({ body: body  }, res)=>{
         const { productId: productId , userId: userId , day: day , isAm: isAm  } = body;
         const text = `

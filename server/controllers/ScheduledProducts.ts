@@ -4,6 +4,29 @@ import type { Express } from 'express'
 const BASE = '/scheduled-products'
 
 export const ScheduledProductsController = (app: Express, pool: Pool) => {
+  app.get(
+    `${BASE}/ingredients/:userid`,
+    async ({ params: { userid } }, res) => {
+      const text = `
+    SELECT 
+      name, 
+      brand, 
+      ingredients 
+    FROM 
+      scheduled_products a 
+      JOIN (
+        SELECT 
+          * 
+        FROM 
+          products
+      ) b on b.id = a.product_id 
+    WHERE 
+      a.user_id = 1
+    `
+      const fetchedIngredients = await pool.query(text)
+      return res.status(200).send(fetchedIngredients.rows)
+    },
+  )
   app.post(BASE, async ({ body }, res) => {
     const { productId, userId, day, isAm } = body
     const text = `
