@@ -379,7 +379,6 @@ const $7cae461d24fb566d$export$ea4422ead210593b = async ()=>{
         pool: pool
     });
     // await seedUsersAndScheduledProducts({ pool, shouldSeed: true })
-    // --- MONGO DB ---
     const app = (0, ($parcel$interopDefault($l009i$express)))();
     const port = 3001;
     app.use((0, ($parcel$interopDefault($l009i$cors)))());

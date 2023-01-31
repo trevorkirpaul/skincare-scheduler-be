@@ -21,7 +21,6 @@ const createServer = async () => {
   await createTables({ pool })
   // await seedUsersAndScheduledProducts({ pool, shouldSeed: true })
 
-  // --- MONGO DB ---
   const app = express()
   const port = 3001
 
