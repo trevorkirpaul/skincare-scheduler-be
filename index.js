@@ -1,11 +1,18 @@
 var $l009i$express = require("express");
 var $l009i$cors = require("cors");
 var $l009i$pg = require("pg");
+var $l009i$expresssession = require("express-session");
+var $l009i$connectpgsimple = require("connect-pg-simple");
+var $l009i$passport = require("passport");
 var $l009i$mongoose = require("mongoose");
+var $l009i$passportlocal = require("passport-local");
+var $l009i$bcryptjs = require("bcryptjs");
 
 function $parcel$interopDefault(a) {
   return a && a.__esModule ? a.default : a;
 }
+
+
 
 
 
@@ -76,7 +83,7 @@ const $543e046aaa91e3cd$var$Schema = new (0, ($parcel$interopDefault($l009i$mong
         {
             type: (0, ($parcel$interopDefault($l009i$mongoose))).Schema.Types.ObjectId,
             ref: "ScheduledProduct"
-        }, 
+        }
     ]
 });
 const $543e046aaa91e3cd$var$Day = (0, ($parcel$interopDefault($l009i$mongoose))).model("Day", $543e046aaa91e3cd$var$Schema);
@@ -101,7 +108,7 @@ const $c74da252e155335b$var$Schema = new (0, ($parcel$interopDefault($l009i$mong
         {
             type: (0, ($parcel$interopDefault($l009i$mongoose))).Schema.Types.ObjectId,
             ref: "Product"
-        }, 
+        }
     ]
 });
 const $c74da252e155335b$var$ScheduledProduct = (0, ($parcel$interopDefault($l009i$mongoose))).model("ScheduledProduct", $c74da252e155335b$var$Schema);
@@ -267,7 +274,7 @@ const $67bca349c99e993d$export$5099ebe82927bbad = (app, pool)=>{
                     day,
                     [
                         newScheduledProduct.rows[0].id
-                    ], 
+                    ]
                 ];
                 const newScheduledProductOrder = await pool.query(newScheduledProductOrderText, newScheduledProductOrderValues);
                 return res.status(201).send(newScheduledProduct);
@@ -305,10 +312,33 @@ const $67bca349c99e993d$export$5099ebe82927bbad = (app, pool)=>{
 };
 
 
+
+const $9c725518d7c385da$var$BASE = `/auth`;
+const $9c725518d7c385da$export$862a273d408fe7a1 = (app, pool)=>{
+    // SIGN UP
+    app.post(`${$9c725518d7c385da$var$BASE}/signup`, (0, ($parcel$interopDefault($l009i$passport))).authenticate("local-signup", {
+        session: false
+    }), (req, res, next)=>{
+        res.json({
+            user: req.user
+        });
+    });
+    // LOGIN
+    app.post(`${$9c725518d7c385da$var$BASE}/login`, (0, ($parcel$interopDefault($l009i$passport))).authenticate("local-login", {
+        session: false
+    }), (req, res, next)=>{
+        res.json({
+            user: req.user
+        });
+    });
+};
+
+
 const $0fed0a37f1519019$var$Routes = (app, pool)=>{
     (0, $03ea3093ee434e59$export$bc7d04bd56466d1)(app, pool);
     (0, $106a7aca2240c444$export$8bd653a33461d337)(app, pool);
     (0, $67bca349c99e993d$export$5099ebe82927bbad)(app, pool);
+    (0, $9c725518d7c385da$export$862a273d408fe7a1)(app, pool);
     app.get("/", (req, res)=>{
         res.send({
             message: "Works!"
@@ -341,7 +371,10 @@ const $c91aec52c74f6064$export$573aa0c7b6bc561 = (properties)=>{
 
       CREATE TABLE IF NOT EXISTS users(
         id SERIAL PRIMARY KEY,
-        email TEXT NOT NULL
+        email TEXT NOT NULL UNIQUE,
+        handle TEXT,
+        profile_id TEXT,
+        password CHAR(60)
       );
 
       CREATE TABLE IF NOT EXISTS scheduled_products(
@@ -365,6 +398,82 @@ const $c91aec52c74f6064$export$573aa0c7b6bc561 = (properties)=>{
 var $c91aec52c74f6064$export$2e2bcd8739ae039 = $c91aec52c74f6064$var$createTables;
 
 
+
+
+
+const $ed4e1211ff3bd6d4$export$9f3fe38e5ec5bf27 = async ({ email: email , pool: pool  })=>{
+    const data = await pool.query("SELECT * FROM users WHERE email=$1", [
+        email
+    ]);
+    if (data.rowCount == 0) return false;
+    return data.rows[0];
+};
+const $ed4e1211ff3bd6d4$export$3493b8991d49f558 = async ({ password: password , pool: pool , email: email  })=>{
+    const salt = await (0, ($parcel$interopDefault($l009i$bcryptjs))).genSalt(10);
+    const hash = await (0, ($parcel$interopDefault($l009i$bcryptjs))).hash(password, salt);
+    const data = await pool.query("INSERT INTO users(email, password) VALUES ($1, $2) RETURNING id, email, password", [
+        email,
+        hash
+    ]);
+    if (data.rowCount == 0) return false;
+    return data.rows[0];
+};
+const $ed4e1211ff3bd6d4$export$1827a9194559f6fa = async ({ password: password , hashPassword: hashPassword  })=>{
+    const match = await (0, ($parcel$interopDefault($l009i$bcryptjs))).compare(password, hashPassword);
+    return match;
+};
+
+
+const $d72e40b00b02b9e2$export$eb07e9be5d383a63 = ({ pool: pool  })=>{
+    // sign up
+    (0, ($parcel$interopDefault($l009i$passport))).use("local-signup", new (0, ($parcel$interopDefault($l009i$passportlocal)))({
+        usernameField: "email",
+        passwordField: "password"
+    }, async (email, password, done)=>{
+        try {
+            const userExists = await (0, $ed4e1211ff3bd6d4$export$9f3fe38e5ec5bf27)({
+                email: email,
+                pool: pool
+            });
+            if (userExists) return done(null, false);
+            const user = await (0, $ed4e1211ff3bd6d4$export$3493b8991d49f558)({
+                email: email,
+                password: password,
+                pool: pool
+            });
+            return done(null, user);
+        } catch (error) {
+            done(error);
+        }
+    }));
+    // login
+    (0, ($parcel$interopDefault($l009i$passport))).use("local-login", new (0, ($parcel$interopDefault($l009i$passportlocal)))({
+        usernameField: "email",
+        passwordField: "password"
+    }, async (email, password, done)=>{
+        try {
+            const user = await (0, $ed4e1211ff3bd6d4$export$9f3fe38e5ec5bf27)({
+                email: email,
+                pool: pool
+            });
+            if (!user) return done(null, false);
+            const isMatch = await (0, $ed4e1211ff3bd6d4$export$1827a9194559f6fa)({
+                password: password,
+                hashPassword: user.password
+            });
+            if (!isMatch) return done(null, false);
+            return done(null, {
+                id: user.id,
+                email: user.email
+            });
+        } catch (error) {
+            return done(error, false);
+        }
+    }));
+};
+
+
+
 const $7cae461d24fb566d$export$ea4422ead210593b = async ()=>{
     const connectionString = "postgres://fputaxut:PO5_wyNdn-iJ4d2cIMVg-KjzphP5P0eH@ruby.db.elephantsql.com/fputaxut";
     if (!connectionString) throw new Error("PG_URL is undefined, check your ENV vars");
@@ -383,6 +492,22 @@ const $7cae461d24fb566d$export$ea4422ead210593b = async ()=>{
     const port = 3001;
     app.use((0, ($parcel$interopDefault($l009i$cors)))());
     app.use((0, ($parcel$interopDefault($l009i$express))).json());
+    app.use((0, ($parcel$interopDefault($l009i$expresssession)))({
+        secret: "keyboard cat",
+        resave: false,
+        saveUninitialized: false,
+        store: new ($l009i$connectpgsimple((0, ($parcel$interopDefault($l009i$expresssession)))))({
+            pool: pool,
+            createTableIfMissing: true
+        }),
+        cookie: {
+            maxAge: 2592000000
+        }
+    }));
+    app.use((0, ($parcel$interopDefault($l009i$passport))).authenticate("session"));
+    (0, $d72e40b00b02b9e2$export$eb07e9be5d383a63)({
+        pool: pool
+    });
     (0, $0fed0a37f1519019$export$2e2bcd8739ae039)(app, pool);
     app.listen(port, ()=>{
         console.log(`Example app listening on port ${port}`);
