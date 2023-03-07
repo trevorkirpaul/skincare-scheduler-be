@@ -2,15 +2,19 @@ var $l009i$express = require("express");
 var $l009i$cors = require("cors");
 var $l009i$pg = require("pg");
 var $l009i$expresssession = require("express-session");
-var $l009i$connectpgsimple = require("connect-pg-simple");
 var $l009i$passport = require("passport");
+var $l009i$cookieparser = require("cookie-parser");
+var $l009i$connectpgsimple = require("connect-pg-simple");
 var $l009i$mongoose = require("mongoose");
+var $l009i$jsonwebtoken = require("jsonwebtoken");
 var $l009i$passportlocal = require("passport-local");
+var $l009i$process = require("process");
 var $l009i$bcryptjs = require("bcryptjs");
 
 function $parcel$interopDefault(a) {
   return a && a.__esModule ? a.default : a;
 }
+
 
 
 
@@ -27,6 +31,10 @@ const $03ea3093ee434e59$var$getSearchQueryIfAvail = (search)=>{
 };
 const $03ea3093ee434e59$export$bc7d04bd56466d1 = (app, pool)=>{
     app.get($03ea3093ee434e59$var$BASE, async (req, res)=>{
+        const accessToken = req.cookies["api-token"];
+        if (!accessToken) return res.status(400).json({
+            error: "user not authenticated"
+        });
         const { limit: limit = 10 , skip: skip = 0 , search: search  } = req.query;
         const safeLimit = limit > 25 ? 25 : limit;
         const searchQueryIfAvail = typeof search === "string" && search.length > 0 ? ` WHERE (brand,name,ingredients)::text LIKE '%${search}%'` : " ";
@@ -35,6 +43,10 @@ const $03ea3093ee434e59$export$bc7d04bd56466d1 = (app, pool)=>{
         res.status(200).send(pgProducts);
     });
     app.get(`${$03ea3093ee434e59$var$BASE}/count`, async (req, res)=>{
+        const accessToken = req.cookies["api-token"];
+        if (!accessToken) return res.status(400).json({
+            error: "user not authenticated"
+        });
         const { search: search  } = req.query;
         const searchQueryIfAvail = $03ea3093ee434e59$var$getSearchQueryIfAvail(search);
         const pgText = `SELECT count(*) AS exact_count FROM products${searchQueryIfAvail}`;
@@ -83,7 +95,7 @@ const $543e046aaa91e3cd$var$Schema = new (0, ($parcel$interopDefault($l009i$mong
         {
             type: (0, ($parcel$interopDefault($l009i$mongoose))).Schema.Types.ObjectId,
             ref: "ScheduledProduct"
-        }
+        }, 
     ]
 });
 const $543e046aaa91e3cd$var$Day = (0, ($parcel$interopDefault($l009i$mongoose))).model("Day", $543e046aaa91e3cd$var$Schema);
@@ -108,7 +120,7 @@ const $c74da252e155335b$var$Schema = new (0, ($parcel$interopDefault($l009i$mong
         {
             type: (0, ($parcel$interopDefault($l009i$mongoose))).Schema.Types.ObjectId,
             ref: "Product"
-        }
+        }, 
     ]
 });
 const $c74da252e155335b$var$ScheduledProduct = (0, ($parcel$interopDefault($l009i$mongoose))).model("ScheduledProduct", $c74da252e155335b$var$Schema);
@@ -274,7 +286,7 @@ const $67bca349c99e993d$export$5099ebe82927bbad = (app, pool)=>{
                     day,
                     [
                         newScheduledProduct.rows[0].id
-                    ]
+                    ], 
                 ];
                 const newScheduledProductOrder = await pool.query(newScheduledProductOrderText, newScheduledProductOrderValues);
                 return res.status(201).send(newScheduledProduct);
@@ -313,22 +325,81 @@ const $67bca349c99e993d$export$5099ebe82927bbad = (app, pool)=>{
 
 
 
+
+// @TODO connect to env
+const $5e7a00aabaf24626$var$JWT_SECRET = "this is for non prod only";
+const $5e7a00aabaf24626$var$createAuthJWT = (payload)=>{
+    return (0, ($parcel$interopDefault($l009i$jsonwebtoken))).sign(payload, $5e7a00aabaf24626$var$JWT_SECRET);
+};
+const $5e7a00aabaf24626$var$options = {
+    sameSite: "none",
+    secure: "false"
+};
+const $5e7a00aabaf24626$export$f0f2945c9efc083 = ({ req: req , res: res , payload: payload  })=>{
+    if (!payload) throw new Error("handleAuthJWT: empty payload");
+    return res.cookie("api-token", $5e7a00aabaf24626$var$createAuthJWT(payload), $5e7a00aabaf24626$var$options);
+};
+const $5e7a00aabaf24626$export$80511153f51fab2 = ({ res: res  })=>res.clearCookie("api-token", $5e7a00aabaf24626$var$options);
+
+
 const $9c725518d7c385da$var$BASE = `/auth`;
 const $9c725518d7c385da$export$862a273d408fe7a1 = (app, pool)=>{
     // SIGN UP
     app.post(`${$9c725518d7c385da$var$BASE}/signup`, (0, ($parcel$interopDefault($l009i$passport))).authenticate("local-signup", {
-        session: false
+        session: true
     }), (req, res, next)=>{
+        // apply JWT with user data
+        // as cookie
+        const payload = {
+            user: req.user
+        };
+        (0, $5e7a00aabaf24626$export$f0f2945c9efc083)({
+            req: req,
+            res: res,
+            payload: payload
+        });
+        // return success res
+        // since user has successfully
+        // signed up
         res.json({
+            auth: true,
+            success: true,
             user: req.user
         });
     });
     // LOGIN
     app.post(`${$9c725518d7c385da$var$BASE}/login`, (0, ($parcel$interopDefault($l009i$passport))).authenticate("local-login", {
-        session: false
+        session: true
     }), (req, res, next)=>{
-        res.json({
+        // apply JWT with user data
+        // as cookie
+        const payload = {
             user: req.user
+        };
+        (0, $5e7a00aabaf24626$export$f0f2945c9efc083)({
+            req: req,
+            res: res,
+            payload: payload
+        });
+        // return success res
+        // since user has successfully
+        // signed up
+        res.json({
+            auth: true,
+            success: true,
+            user: req.user
+        });
+    });
+    // To destroy the session we use this endpoint
+    app.get(`${$9c725518d7c385da$var$BASE}/logout`, (req, res)=>{
+        // req.logout() // passport funct?
+        req.session.destroy();
+        (0, $5e7a00aabaf24626$export$80511153f51fab2)({
+            res: res
+        });
+        res.send({
+            logout: "SUCCESS",
+            success: true
         });
     });
 };
@@ -424,6 +495,7 @@ const $ed4e1211ff3bd6d4$export$1827a9194559f6fa = async ({ password: password , 
 };
 
 
+
 const $d72e40b00b02b9e2$export$eb07e9be5d383a63 = ({ pool: pool  })=>{
     // sign up
     (0, ($parcel$interopDefault($l009i$passport))).use("local-signup", new (0, ($parcel$interopDefault($l009i$passportlocal)))({
@@ -470,6 +542,19 @@ const $d72e40b00b02b9e2$export$eb07e9be5d383a63 = ({ pool: pool  })=>{
             return done(error, false);
         }
     }));
+    (0, ($parcel$interopDefault($l009i$passport))).serializeUser(function(user, cb) {
+        $l009i$process.nextTick(function() {
+            cb(null, {
+                id: user.id,
+                username: user.username
+            });
+        });
+    });
+    (0, ($parcel$interopDefault($l009i$passport))).deserializeUser(function(user, cb) {
+        $l009i$process.nextTick(function() {
+            return cb(null, user);
+        });
+    });
 };
 
 
@@ -487,10 +572,24 @@ const $7cae461d24fb566d$export$ea4422ead210593b = async ()=>{
     await (0, $c91aec52c74f6064$export$2e2bcd8739ae039)({
         pool: pool
     });
+    // @TODO: needs a better implementation
+    // we could run all the time with the 'IF NOT EXISTS' clause
+    // but the underlying code needs to be reviewed first
     // await seedUsersAndScheduledProducts({ pool, shouldSeed: true })
     const app = (0, ($parcel$interopDefault($l009i$express)))();
     const port = 3001;
-    app.use((0, ($parcel$interopDefault($l009i$cors)))());
+    app.use((0, ($parcel$interopDefault($l009i$cookieparser)))());
+    app.use((0, ($parcel$interopDefault($l009i$cors)))({
+        origin: "http://192.168.50.40:8000",
+        methods: [
+            "POST",
+            "PUT",
+            "GET",
+            "OPTIONS",
+            "HEAD"
+        ],
+        credentials: true
+    }));
     app.use((0, ($parcel$interopDefault($l009i$express))).json());
     app.use((0, ($parcel$interopDefault($l009i$expresssession)))({
         secret: "keyboard cat",
@@ -501,7 +600,7 @@ const $7cae461d24fb566d$export$ea4422ead210593b = async ()=>{
             createTableIfMissing: true
         }),
         cookie: {
-            maxAge: 2592000000
+            secure: false
         }
     }));
     app.use((0, ($parcel$interopDefault($l009i$passport))).authenticate("session"));

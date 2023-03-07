@@ -56,4 +56,16 @@ export const configurePassport = ({ pool }: IConfigurePassport) => {
       },
     ),
   )
+
+  passport.serializeUser(function (user: any, cb) {
+    process.nextTick(function () {
+      cb(null, { id: user.id, username: user.username })
+    })
+  })
+
+  passport.deserializeUser(function (user: any, cb) {
+    process.nextTick(function () {
+      return cb(null, user)
+    })
+  })
 }
