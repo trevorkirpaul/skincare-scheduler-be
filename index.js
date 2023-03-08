@@ -480,14 +480,16 @@ const $ed4e1211ff3bd6d4$export$9f3fe38e5ec5bf27 = async ({ email: email , pool: 
     return data.rows[0];
 };
 const $ed4e1211ff3bd6d4$export$3493b8991d49f558 = async ({ password: password , pool: pool , email: email  })=>{
-    const salt = await (0, ($parcel$interopDefault($l009i$bcryptjs))).genSalt(10);
-    const hash = await (0, ($parcel$interopDefault($l009i$bcryptjs))).hash(password, salt);
-    const data = await pool.query("INSERT INTO users(email, password) VALUES ($1, $2) RETURNING id, email, password", [
-        email,
-        hash
-    ]);
-    if (data.rowCount == 0) return false;
-    return data.rows[0];
+    try {
+        const salt = await (0, ($parcel$interopDefault($l009i$bcryptjs))).genSalt(10);
+        const hash = await (0, ($parcel$interopDefault($l009i$bcryptjs))).hash(password, salt);
+        const data = await pool.query("INSERT INTO users(email, password) VALUES ($1, $2) RETURNING id, email, password", [
+            email,
+            hash
+        ]);
+        if (data.rowCount == 0) return false;
+        return data.rows[0];
+    } catch (e) {}
 };
 const $ed4e1211ff3bd6d4$export$1827a9194559f6fa = async ({ password: password , hashPassword: hashPassword  })=>{
     const match = await (0, ($parcel$interopDefault($l009i$bcryptjs))).compare(password, hashPassword);

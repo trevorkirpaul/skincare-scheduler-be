@@ -36,14 +36,16 @@ export const createUser = async ({
   pool,
   email,
 }: ICreateUserArgs) => {
-  const salt = await bcrypt.genSalt(10)
-  const hash = await bcrypt.hash(password, salt)
-  const data = await pool.query(
-    'INSERT INTO users(email, password) VALUES ($1, $2) RETURNING id, email, password',
-    [email, hash],
-  )
-  if (data.rowCount == 0) return false
-  return data.rows[0]
+  try {
+    const salt = await bcrypt.genSalt(10)
+    const hash = await bcrypt.hash(password, salt)
+    const data = await pool.query(
+      'INSERT INTO users(email, password) VALUES ($1, $2) RETURNING id, email, password',
+      [email, hash],
+    )
+    if (data.rowCount == 0) return false
+    return data.rows[0]
+  } catch (e) {}
 }
 
 interface IMatchPasswordArgs {
