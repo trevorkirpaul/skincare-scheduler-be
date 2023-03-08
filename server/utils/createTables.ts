@@ -17,6 +17,7 @@ interface TableToCreate {
   properties: TableProperties[]
 }
 
+// @TODO: remove if no longer needed
 export const getPropertiesForText = (properties: TableProperties[]) => {
   return properties.reduce((prev, { name, type, notNull, isArray }) => {
     const computedType = isArray ? `${type}[]` : `${type}`
@@ -43,7 +44,10 @@ const createTables = async ({ pool }: IArgs): Promise<void> => {
 
       CREATE TABLE IF NOT EXISTS users(
         id SERIAL PRIMARY KEY,
-        email TEXT NOT NULL
+        email TEXT NOT NULL UNIQUE,
+        handle TEXT,
+        profile_id TEXT,
+        password CHAR(60)
       );
 
       CREATE TABLE IF NOT EXISTS scheduled_products(

@@ -1,11 +1,22 @@
 var $l009i$express = require("express");
 var $l009i$cors = require("cors");
 var $l009i$pg = require("pg");
+var $l009i$expresssession = require("express-session");
+var $l009i$passport = require("passport");
+var $l009i$cookieparser = require("cookie-parser");
+var $l009i$connectpgsimple = require("connect-pg-simple");
 var $l009i$mongoose = require("mongoose");
+var $l009i$jsonwebtoken = require("jsonwebtoken");
+var $l009i$passportlocal = require("passport-local");
+var $l009i$process = require("process");
+var $l009i$bcryptjs = require("bcryptjs");
 
 function $parcel$interopDefault(a) {
   return a && a.__esModule ? a.default : a;
 }
+
+
+
 
 
 
@@ -20,6 +31,10 @@ const $03ea3093ee434e59$var$getSearchQueryIfAvail = (search)=>{
 };
 const $03ea3093ee434e59$export$bc7d04bd56466d1 = (app, pool)=>{
     app.get($03ea3093ee434e59$var$BASE, async (req, res)=>{
+        const accessToken = req.cookies["api-token"];
+        if (!accessToken) return res.status(400).json({
+            error: "user not authenticated"
+        });
         const { limit: limit = 10 , skip: skip = 0 , search: search  } = req.query;
         const safeLimit = limit > 25 ? 25 : limit;
         const searchQueryIfAvail = typeof search === "string" && search.length > 0 ? ` WHERE (brand,name,ingredients)::text LIKE '%${search}%'` : " ";
@@ -28,6 +43,10 @@ const $03ea3093ee434e59$export$bc7d04bd56466d1 = (app, pool)=>{
         res.status(200).send(pgProducts);
     });
     app.get(`${$03ea3093ee434e59$var$BASE}/count`, async (req, res)=>{
+        const accessToken = req.cookies["api-token"];
+        if (!accessToken) return res.status(400).json({
+            error: "user not authenticated"
+        });
         const { search: search  } = req.query;
         const searchQueryIfAvail = $03ea3093ee434e59$var$getSearchQueryIfAvail(search);
         const pgText = `SELECT count(*) AS exact_count FROM products${searchQueryIfAvail}`;
@@ -305,10 +324,92 @@ const $67bca349c99e993d$export$5099ebe82927bbad = (app, pool)=>{
 };
 
 
+
+
+// @TODO connect to env
+const $5e7a00aabaf24626$var$JWT_SECRET = "this is for non prod only";
+const $5e7a00aabaf24626$var$createAuthJWT = (payload)=>{
+    return (0, ($parcel$interopDefault($l009i$jsonwebtoken))).sign(payload, $5e7a00aabaf24626$var$JWT_SECRET);
+};
+const $5e7a00aabaf24626$var$options = {
+    sameSite: "none",
+    secure: "false"
+};
+const $5e7a00aabaf24626$export$f0f2945c9efc083 = ({ req: req , res: res , payload: payload  })=>{
+    if (!payload) throw new Error("handleAuthJWT: empty payload");
+    return res.cookie("api-token", $5e7a00aabaf24626$var$createAuthJWT(payload), $5e7a00aabaf24626$var$options);
+};
+const $5e7a00aabaf24626$export$80511153f51fab2 = ({ res: res  })=>res.clearCookie("api-token", $5e7a00aabaf24626$var$options);
+
+
+const $9c725518d7c385da$var$BASE = `/auth`;
+const $9c725518d7c385da$export$862a273d408fe7a1 = (app, pool)=>{
+    // SIGN UP
+    app.post(`${$9c725518d7c385da$var$BASE}/signup`, (0, ($parcel$interopDefault($l009i$passport))).authenticate("local-signup", {
+        session: true
+    }), (req, res, next)=>{
+        // apply JWT with user data
+        // as cookie
+        const payload = {
+            user: req.user
+        };
+        (0, $5e7a00aabaf24626$export$f0f2945c9efc083)({
+            req: req,
+            res: res,
+            payload: payload
+        });
+        // return success res
+        // since user has successfully
+        // signed up
+        res.json({
+            auth: true,
+            success: true,
+            user: req.user
+        });
+    });
+    // LOGIN
+    app.post(`${$9c725518d7c385da$var$BASE}/login`, (0, ($parcel$interopDefault($l009i$passport))).authenticate("local-login", {
+        session: true
+    }), (req, res, next)=>{
+        // apply JWT with user data
+        // as cookie
+        const payload = {
+            user: req.user
+        };
+        (0, $5e7a00aabaf24626$export$f0f2945c9efc083)({
+            req: req,
+            res: res,
+            payload: payload
+        });
+        // return success res
+        // since user has successfully
+        // signed up
+        res.json({
+            auth: true,
+            success: true,
+            user: req.user
+        });
+    });
+    // To destroy the session we use this endpoint
+    app.get(`${$9c725518d7c385da$var$BASE}/logout`, (req, res)=>{
+        // req.logout() // passport funct?
+        req.session.destroy();
+        (0, $5e7a00aabaf24626$export$80511153f51fab2)({
+            res: res
+        });
+        res.send({
+            logout: "SUCCESS",
+            success: true
+        });
+    });
+};
+
+
 const $0fed0a37f1519019$var$Routes = (app, pool)=>{
     (0, $03ea3093ee434e59$export$bc7d04bd56466d1)(app, pool);
     (0, $106a7aca2240c444$export$8bd653a33461d337)(app, pool);
     (0, $67bca349c99e993d$export$5099ebe82927bbad)(app, pool);
+    (0, $9c725518d7c385da$export$862a273d408fe7a1)(app, pool);
     app.get("/", (req, res)=>{
         res.send({
             message: "Works!"
@@ -341,7 +442,10 @@ const $c91aec52c74f6064$export$573aa0c7b6bc561 = (properties)=>{
 
       CREATE TABLE IF NOT EXISTS users(
         id SERIAL PRIMARY KEY,
-        email TEXT NOT NULL
+        email TEXT NOT NULL UNIQUE,
+        handle TEXT,
+        profile_id TEXT,
+        password CHAR(60)
       );
 
       CREATE TABLE IF NOT EXISTS scheduled_products(
@@ -365,6 +469,98 @@ const $c91aec52c74f6064$export$573aa0c7b6bc561 = (properties)=>{
 var $c91aec52c74f6064$export$2e2bcd8739ae039 = $c91aec52c74f6064$var$createTables;
 
 
+
+
+
+const $ed4e1211ff3bd6d4$export$9f3fe38e5ec5bf27 = async ({ email: email , pool: pool  })=>{
+    const data = await pool.query("SELECT * FROM users WHERE email=$1", [
+        email
+    ]);
+    if (data.rowCount == 0) return false;
+    return data.rows[0];
+};
+const $ed4e1211ff3bd6d4$export$3493b8991d49f558 = async ({ password: password , pool: pool , email: email  })=>{
+    try {
+        const salt = await (0, ($parcel$interopDefault($l009i$bcryptjs))).genSalt(10);
+        const hash = await (0, ($parcel$interopDefault($l009i$bcryptjs))).hash(password, salt);
+        const data = await pool.query("INSERT INTO users(email, password) VALUES ($1, $2) RETURNING id, email, password", [
+            email,
+            hash
+        ]);
+        if (data.rowCount == 0) return false;
+        return data.rows[0];
+    } catch (e) {}
+};
+const $ed4e1211ff3bd6d4$export$1827a9194559f6fa = async ({ password: password , hashPassword: hashPassword  })=>{
+    const match = await (0, ($parcel$interopDefault($l009i$bcryptjs))).compare(password, hashPassword);
+    return match;
+};
+
+
+
+const $d72e40b00b02b9e2$export$eb07e9be5d383a63 = ({ pool: pool  })=>{
+    // sign up
+    (0, ($parcel$interopDefault($l009i$passport))).use("local-signup", new (0, ($parcel$interopDefault($l009i$passportlocal)))({
+        usernameField: "email",
+        passwordField: "password"
+    }, async (email, password, done)=>{
+        try {
+            const userExists = await (0, $ed4e1211ff3bd6d4$export$9f3fe38e5ec5bf27)({
+                email: email,
+                pool: pool
+            });
+            if (userExists) return done(null, false);
+            const user = await (0, $ed4e1211ff3bd6d4$export$3493b8991d49f558)({
+                email: email,
+                password: password,
+                pool: pool
+            });
+            return done(null, user);
+        } catch (error) {
+            done(error);
+        }
+    }));
+    // login
+    (0, ($parcel$interopDefault($l009i$passport))).use("local-login", new (0, ($parcel$interopDefault($l009i$passportlocal)))({
+        usernameField: "email",
+        passwordField: "password"
+    }, async (email, password, done)=>{
+        try {
+            const user = await (0, $ed4e1211ff3bd6d4$export$9f3fe38e5ec5bf27)({
+                email: email,
+                pool: pool
+            });
+            if (!user) return done(null, false);
+            const isMatch = await (0, $ed4e1211ff3bd6d4$export$1827a9194559f6fa)({
+                password: password,
+                hashPassword: user.password
+            });
+            if (!isMatch) return done(null, false);
+            return done(null, {
+                id: user.id,
+                email: user.email
+            });
+        } catch (error) {
+            return done(error, false);
+        }
+    }));
+    (0, ($parcel$interopDefault($l009i$passport))).serializeUser(function(user, cb) {
+        $l009i$process.nextTick(function() {
+            cb(null, {
+                id: user.id,
+                username: user.username
+            });
+        });
+    });
+    (0, ($parcel$interopDefault($l009i$passport))).deserializeUser(function(user, cb) {
+        $l009i$process.nextTick(function() {
+            return cb(null, user);
+        });
+    });
+};
+
+
+
 const $7cae461d24fb566d$export$ea4422ead210593b = async ()=>{
     const connectionString = "postgres://fputaxut:PO5_wyNdn-iJ4d2cIMVg-KjzphP5P0eH@ruby.db.elephantsql.com/fputaxut";
     if (!connectionString) throw new Error("PG_URL is undefined, check your ENV vars");
@@ -378,11 +574,41 @@ const $7cae461d24fb566d$export$ea4422ead210593b = async ()=>{
     await (0, $c91aec52c74f6064$export$2e2bcd8739ae039)({
         pool: pool
     });
+    // @TODO: needs a better implementation
+    // we could run all the time with the 'IF NOT EXISTS' clause
+    // but the underlying code needs to be reviewed first
     // await seedUsersAndScheduledProducts({ pool, shouldSeed: true })
     const app = (0, ($parcel$interopDefault($l009i$express)))();
     const port = 3001;
-    app.use((0, ($parcel$interopDefault($l009i$cors)))());
+    app.use((0, ($parcel$interopDefault($l009i$cookieparser)))());
+    app.use((0, ($parcel$interopDefault($l009i$cors)))({
+        origin: "http://192.168.50.40:8000",
+        methods: [
+            "POST",
+            "PUT",
+            "GET",
+            "OPTIONS",
+            "HEAD"
+        ],
+        credentials: true
+    }));
     app.use((0, ($parcel$interopDefault($l009i$express))).json());
+    app.use((0, ($parcel$interopDefault($l009i$expresssession)))({
+        secret: "keyboard cat",
+        resave: false,
+        saveUninitialized: false,
+        store: new ($l009i$connectpgsimple((0, ($parcel$interopDefault($l009i$expresssession)))))({
+            pool: pool,
+            createTableIfMissing: true
+        }),
+        cookie: {
+            secure: false
+        }
+    }));
+    app.use((0, ($parcel$interopDefault($l009i$passport))).authenticate("session"));
+    (0, $d72e40b00b02b9e2$export$eb07e9be5d383a63)({
+        pool: pool
+    });
     (0, $0fed0a37f1519019$export$2e2bcd8739ae039)(app, pool);
     app.listen(port, ()=>{
         console.log(`Example app listening on port ${port}`);

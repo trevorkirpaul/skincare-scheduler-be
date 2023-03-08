@@ -14,6 +14,11 @@ const getSearchQueryIfAvail = (search) => {
 
 export const ProductsController = (app: Express, pool: Pool) => {
   app.get(BASE, async (req, res) => {
+    const accessToken = req.cookies['api-token']
+    if (!accessToken) {
+      return res.status(400).json({ error: 'user not authenticated' })
+    }
+
     const { limit = 10, skip = 0, search } = req.query
     const safeLimit = limit > 25 ? 25 : limit
     const searchQueryIfAvail =
@@ -28,6 +33,11 @@ export const ProductsController = (app: Express, pool: Pool) => {
   })
 
   app.get(`${BASE}/count`, async (req, res) => {
+    const accessToken = req.cookies['api-token']
+    if (!accessToken) {
+      return res.status(400).json({ error: 'user not authenticated' })
+    }
+
     const { search } = req.query
     const searchQueryIfAvail = getSearchQueryIfAvail(search)
     const pgText = `SELECT count(*) AS exact_count FROM products${searchQueryIfAvail}`
