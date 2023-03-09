@@ -36,21 +36,24 @@ export const ScheduledProductsController = (app: Express, pool: Pool) => {
     `
     const newScheduledProduct = await pool.query(text)
 
+    const isAmQuery = isAm ? 'true' : 'false'
+
     try {
       const foundScheduledProductOrder = await pool.query(
         `
         SELECT * FROM scheduled_product_orders
-        WHERE scheduled_product_orders.user_id = ${userId} AND scheduled_product_orders.day = '${day}'
+        WHERE scheduled_product_orders.user_id = ${userId} AND scheduled_product_orders.day = '${day}' AND scheduled_product_orders.is_am = '${isAmQuery}'
       `,
       )
 
       if (foundScheduledProductOrder.rows.length === 0) {
-        const newScheduledProductOrderText = `INSERT INTO scheduled_product_orders(user_id, day, scheduled_product_ids) VALUES($1, $2, $3)`
+        const newScheduledProductOrderText = `INSERT INTO scheduled_product_orders(user_id, day, scheduled_product_ids, is_am) VALUES($1, $2, $3, $4)`
 
         const newScheduledProductOrderValues = [
           userId,
           day,
           [newScheduledProduct.rows[0].id],
+          isAm,
         ]
 
         const newScheduledProductOrder = await pool.query(
@@ -78,12 +81,15 @@ export const ScheduledProductsController = (app: Express, pool: Pool) => {
     }
   })
 
-  app.delete(`${BASE}/:id`, async ({ params }, res) => {
+  app.delete(`${BASE}/:id/:time`, async ({ params }, res) => {
     const text = `
       DELETE FROM scheduled_products
-      WHERE id = ${params.id}
+      WHERE id = ${params.id} AND is_am = '${
+      params.time === 'AM' ? 'true' : 'false'
+    }'
       RETURNING *;
     `
+
     const deletedResponse = await pool.query(text)
 
     // update scheduled_product_order

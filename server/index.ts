@@ -34,7 +34,7 @@ const createServer = async () => {
   app.use(
     cors({
       origin: 'http://192.168.50.40:8000',
-      methods: ['POST', 'PUT', 'GET', 'OPTIONS', 'HEAD'],
+      methods: ['POST', 'PUT', 'GET', 'OPTIONS', 'HEAD', 'DELETE'],
       credentials: true,
     }),
   )

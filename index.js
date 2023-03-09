@@ -195,13 +195,15 @@ const $106a7aca2240c444$export$8bd653a33461d337 = (app, pool)=>{
         const updatedScheduledProductOrderResponse = await pool.query(updatedScheduledProductOrderText);
         return res.status(200).send(updatedScheduledProductOrderResponse.rows);
     });
-    app.post(`${$106a7aca2240c444$var$BASE}/day/order`, async ({ body: { day: day , items: items , userId: userId  }  }, res)=>{
+    app.post(`${$106a7aca2240c444$var$BASE}/day/order`, async ({ body: { day: day , items: items , userId: userId , is_am: is_am  }  }, res)=>{
+        const isAmQuery = is_am ? "true" : "false";
         const updatedScheduledProductOrderText = `
           UPDATE scheduled_product_orders
           SET scheduled_product_ids = ($1)
-          WHERE scheduled_product_orders.day = '${day}' AND scheduled_product_orders.user_id = ${userId}
+          WHERE scheduled_product_orders.day = '${day}' AND scheduled_product_orders.user_id = ${userId} AND scheduled_product_orders.is_am = '${isAmQuery}'
           RETURNING *;
         `;
+        console.log("updatedScheduledProductOrderText", updatedScheduledProductOrderText);
         const updatedScheduledProductOrderValues = [
             items
         ];
@@ -274,19 +276,21 @@ const $67bca349c99e993d$export$5099ebe82927bbad = (app, pool)=>{
       RETURNING id;
     `;
         const newScheduledProduct = await pool.query(text);
+        const isAmQuery = isAm ? "true" : "false";
         try {
             const foundScheduledProductOrder = await pool.query(`
         SELECT * FROM scheduled_product_orders
-        WHERE scheduled_product_orders.user_id = ${userId} AND scheduled_product_orders.day = '${day}'
+        WHERE scheduled_product_orders.user_id = ${userId} AND scheduled_product_orders.day = '${day}' AND scheduled_product_orders.is_am = '${isAmQuery}'
       `);
             if (foundScheduledProductOrder.rows.length === 0) {
-                const newScheduledProductOrderText = `INSERT INTO scheduled_product_orders(user_id, day, scheduled_product_ids) VALUES($1, $2, $3)`;
+                const newScheduledProductOrderText = `INSERT INTO scheduled_product_orders(user_id, day, scheduled_product_ids, is_am) VALUES($1, $2, $3, $4)`;
                 const newScheduledProductOrderValues = [
                     userId,
                     day,
                     [
                         newScheduledProduct.rows[0].id
-                    ], 
+                    ],
+                    isAm, 
                 ];
                 const newScheduledProductOrder = await pool.query(newScheduledProductOrderText, newScheduledProductOrderValues);
                 return res.status(201).send(newScheduledProduct);
@@ -304,10 +308,10 @@ const $67bca349c99e993d$export$5099ebe82927bbad = (app, pool)=>{
             return res.status(201).send(newScheduledProduct);
         }
     });
-    app.delete(`${$67bca349c99e993d$var$BASE}/:id`, async ({ params: params  }, res)=>{
+    app.delete(`${$67bca349c99e993d$var$BASE}/:id/:time`, async ({ params: params  }, res)=>{
         const text = `
       DELETE FROM scheduled_products
-      WHERE id = ${params.id}
+      WHERE id = ${params.id} AND is_am = '${params.time === "AM" ? "true" : "false"}'
       RETURNING *;
     `;
         const deletedResponse = await pool.query(text);
@@ -460,7 +464,8 @@ const $c91aec52c74f6064$export$573aa0c7b6bc561 = (properties)=>{
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
         day TEXT NOT NULL,
-        scheduled_product_ids INTEGER[]
+        scheduled_product_ids INTEGER[],
+        is_am BOOLEAN NOT NULL
       );
 
       COMMIT;
@@ -588,7 +593,8 @@ const $7cae461d24fb566d$export$ea4422ead210593b = async ()=>{
             "PUT",
             "GET",
             "OPTIONS",
-            "HEAD"
+            "HEAD",
+            "DELETE"
         ],
         credentials: true
     }));

@@ -62,7 +62,8 @@ const createTables = async ({ pool }: IArgs): Promise<void> => {
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
         day TEXT NOT NULL,
-        scheduled_product_ids INTEGER[]
+        scheduled_product_ids INTEGER[],
+        is_am BOOLEAN NOT NULL
       );
 
       COMMIT;

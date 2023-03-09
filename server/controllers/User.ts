@@ -79,13 +79,16 @@ export const UserController = (app: Express, pool: Pool) => {
 
   app.post(
     `${BASE}/day/order`,
-    async ({ body: { day, items, userId } }, res) => {
+    async ({ body: { day, items, userId, is_am } }, res) => {
+      const isAmQuery = is_am ? 'true' : 'false'
+
       const updatedScheduledProductOrderText = `
           UPDATE scheduled_product_orders
           SET scheduled_product_ids = ($1)
-          WHERE scheduled_product_orders.day = '${day}' AND scheduled_product_orders.user_id = ${userId}
+          WHERE scheduled_product_orders.day = '${day}' AND scheduled_product_orders.user_id = ${userId} AND scheduled_product_orders.is_am = '${isAmQuery}'
           RETURNING *;
         `
+
       const updatedScheduledProductOrderValues = [items]
       const updatedScheduledProductOrderResponse = await pool.query(
         updatedScheduledProductOrderText,
